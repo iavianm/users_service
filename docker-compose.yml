@@ -1,0 +1,82 @@
+version: '3'
+
+services:
+  frontend:
+    build: ./users_frontend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - users
+      - history
+    volumes:
+      - ./users_frontend:/usr/src/users_frontend_app
+    networks:
+      - users_default
+    command: ["npm", "start"]
+
+  users:
+    build: ./users
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=users_dev
+      - DB_PORT=5432
+    depends_on:
+      - users_dev
+    volumes:
+      - ./users:/usr/src/users_app
+    networks:
+      - users_default
+    command: ["./wait-for-it.sh", "users_dev:5432", "--", "sh", "-c", "npx sequelize-cli db:migrate && node server.js"]
+
+  users_dev:
+    image: postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database_users_dev
+    volumes:
+      - pgdata1:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    networks:
+      - users_default
+
+  history:
+    build: ./users_history
+    ports:
+      - "4002:4002"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=history_dev
+      - DB_PORT=5432
+    depends_on:
+      - history_dev
+    volumes:
+      - ./users_history:/usr/src/users_history_app
+    networks:
+      - users_default
+    command: [ "./wait-for-it.sh", "history_dev:5432", "--", "sh", "-c", "npx sequelize-cli db:migrate && node server.js" ]
+
+  history_dev:
+    image: postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database_history_dev
+    volumes:
+      - pgdata2:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - users_default
+
+volumes:
+  pgdata1:
+  pgdata2:
+
+networks:
+  users_default:
